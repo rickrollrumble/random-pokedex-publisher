@@ -1,6 +1,6 @@
-package services
+package bluesky
 
-type BlueskyNewSession struct {
+type NewSession struct {
 	Did             string `json:"did"`
 	DidDoc          DidDoc `json:"didDoc"`
 	Handle          string `json:"handle"`
@@ -30,7 +30,7 @@ type DidDoc struct {
 	Service            []Service            `json:"service"`
 }
 
-type BlueskyCreatePostResp struct {
+type RespCreatePost struct {
 	URI              string `json:"uri"`
 	Cid              string `json:"cid"`
 	Commit           Commit `json:"commit"`
@@ -41,12 +41,30 @@ type Commit struct {
 	Rev string `json:"rev"`
 }
 
-type BlueskyCreatePostReq struct {
+type ReqCreatePost struct {
 	Repo       string `json:"repo"`
 	Collection string `json:"collection"`
 	Record     Record `json:"record"`
 }
+type Index struct {
+	ByteStart int `json:"byteStart"`
+	ByteEnd   int `json:"byteEnd"`
+}
+type Features struct {
+	Type string `json:"$type"`
+	URI  string `json:"uri"`
+}
+type Facet struct {
+	Index    Index      `json:"index"`
+	Features []Features `json:"features"`
+}
 type Record struct {
-	Text      string `json:"text"`
-	CreatedAt string `json:"createdAt"`
+	Text      string  `json:"text"`
+	CreatedAt string  `json:"createdAt"`
+	Facets    []Facet `json:"facets"`
+}
+
+type PostParams struct {
+	Text string
+	Link string
 }
