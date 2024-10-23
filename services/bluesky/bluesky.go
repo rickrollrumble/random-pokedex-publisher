@@ -5,17 +5,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/joho/godotenv"
 )
 
 // Import resty into your code and refer it as `resty`.
 func CreateNewSession() (NewSession, error) {
-	bskyPassword := os.Getenv("BSKY_PASSWORD")
-	bskyHandle := os.Getenv("BSKY_HANDLE")
+	env, envLoadErr := godotenv.Read(".env")
+	if envLoadErr != nil {
+		return NewSession{}, fmt.Errorf("failed to load environment variables to create session: %w", envLoadErr)
+	}
+
+	bskyPassword := env["BSKY_PASSWORD"]
+	bskyHandle := env["BSKY_HANDLE"]
 
 	client := resty.New().SetBaseURL("https://bsky.social")
 	req := client.R().SetBody(map[string]string{"identifier": bskyHandle, "password": bskyPassword})
@@ -86,18 +91,24 @@ func createPostBody(params PostParams) ReqCreatePost {
 		},
 	}
 
-	post.Record.Facets = append(post.Record.Facets, Facet{
-		Index: Index{
-			ByteStart: len(params.Text),
-			ByteEnd:   len(params.Text) + len(params.Link) + 1,
-		},
-		Features: []Features{
-			{
-				Type: "app.bsky.richtext.facet#link",
-				URI:  params.Link,
+	if params.Link != "" {
+		post.Record.Facets = append(post.Record.Facets, Facet{
+			Index: Index{
+				ByteStart: len(params.Text),
+				ByteEnd:   len(params.Text) + len(params.Link) + 1,
 			},
-		},
-	})
+			Features: []Features{
+				{
+					Type: "app.bsky.richtext.facet#link",
+					URI:  params.Link,
+				},
+			},
+		})
+	}
+
+	if len(params.Image) > 0 {
+		post.Record.Embed.Type = "$app.bsky.embed.images"
+	}
 
 	return post
 }

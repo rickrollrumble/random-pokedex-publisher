@@ -58,13 +58,33 @@ type Facet struct {
 	Index    Index      `json:"index"`
 	Features []Features `json:"features"`
 }
+
+type ImageDetails struct {
+	Alt   string `json:"alt"`
+	Image struct {
+		Type string `json:"$type"`
+		Ref  struct {
+			Link string `json:"$link"`
+		} `json:"ref"`
+		MimeType string `json:"mimeType"`
+		Size     int    `json:"size"`
+	} `json:"image"`
+}
+
+type Embed struct {
+	Type   string         `json:"$type"`
+	Images []ImageDetails `json:"images"`
+}
+
 type Record struct {
 	Text      string  `json:"text"`
 	CreatedAt string  `json:"createdAt"`
-	Facets    []Facet `json:"facets"`
+	Facets    []Facet `json:"facets,omitempty"`
+	Embed     Embed   `json:"embed,omitempty"`
 }
 
 type PostParams struct {
-	Text string
-	Link string
+	Text  string
+	Link  string
+	Image []ImageDetails
 }
