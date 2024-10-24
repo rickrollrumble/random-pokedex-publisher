@@ -60,15 +60,8 @@ type Facet struct {
 }
 
 type ImageDetails struct {
-	Alt   string `json:"alt"`
-	Image struct {
-		Type string `json:"$type"`
-		Ref  struct {
-			Link string `json:"$link"`
-		} `json:"ref"`
-		MimeType string `json:"mimeType"`
-		Size     int    `json:"size"`
-	} `json:"image"`
+	Alt   string          `json:"alt"`
+	Image RespImageUpload `json:"image"`
 }
 
 type Embed struct {
@@ -84,7 +77,17 @@ type Record struct {
 }
 
 type PostParams struct {
-	Text  string
-	Link  string
-	Image []ImageDetails
+	Text   string
+	Link   string
+	Images []ImageDetails
+}
+
+type RespImageUpload struct {
+	Type     string `json:"$type"`
+	Ref      Ref    `json:"ref"`
+	MimeType string `json:"mimeType"`
+	Size     int    `json:"size"`
+}
+type Ref struct {
+	Link string `json:"$link"`
 }

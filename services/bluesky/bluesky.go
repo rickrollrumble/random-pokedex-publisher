@@ -106,9 +106,50 @@ func createPostBody(params PostParams) ReqCreatePost {
 		})
 	}
 
-	if len(params.Image) > 0 {
+	if len(params.Images) > 0 {
 		post.Record.Embed.Type = "$app.bsky.embed.images"
+		post.Record.Embed.Images = params.Images
 	}
 
+	y, _ := json.Marshal(post)
+	j := string(y)
+	fmt.Println(j)
 	return post
+}
+
+func UploadImage(ctx context.Context, image []byte) (RespImageUpload, error) {
+	session, ok := ctx.Value("session").(NewSession)
+	if !ok {
+		var sessionCreateErr error
+		session, sessionCreateErr = CreateNewSession()
+		if sessionCreateErr != nil {
+			return RespImageUpload{}, fmt.Errorf("failed to create new post: %w", sessionCreateErr)
+		}
+	}
+
+	client := resty.New().SetAuthScheme("Bearer").SetBaseURL("https://bsky.social")
+	client.SetAuthToken(session.AccessJwt)
+
+	req := client.R().SetBody(image).SetHeader("Content-Type", "image/png")
+
+	resp, respErr := req.Post("xrpc/com.atproto.repo.uploadBlob")
+	if respErr != nil {
+		return RespImageUpload{}, fmt.Errorf("failed to upload image: %w", respErr)
+	}
+
+	if resp.IsError() {
+		return RespImageUpload{}, fmt.Errorf("received an error response while trying to upload image")
+	}
+
+	baseResp := make(map[string]RespImageUpload)
+	unmarshalErr := json.Unmarshal(resp.Body(), &baseResp)
+	if unmarshalErr != nil {
+		return RespImageUpload{}, fmt.Errorf("response received from image upload was not valid: %w", unmarshalErr)
+	}
+
+	if reflect.ValueOf(baseResp["blob"]).IsZero() {
+		return RespImageUpload{}, fmt.Errorf("received an invalid response while trying to upload image")
+	}
+
+	return baseResp["blob"], nil
 }

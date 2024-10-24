@@ -130,34 +130,37 @@ func CreatePost(id int) error {
 		Text: postText,
 	}
 
-	sprite, err := formatSprite(pokemon.Sprites.Other.OfficialArtwork.FrontDefault, pokemon.Name)
+	sprite, err := formatSprite(pokemon.Sprites.Other.OfficialArtwork.FrontDefault)
 	if err != nil {
 		return fmt.Errorf("failed to fetch sprite for pokemon")
 	}
 
-	post.Image = []bluesky.ImageDetails{sprite}
+	post.Images = []bluesky.ImageDetails{
+		{
+			Alt:   fmt.Sprintf("official artwork of the pokemon %s", titleCaser.String(strings.ToLower(pokemon.Name))),
+			Image: sprite,
+		},
+	}
 
 	return bluesky.SendPost(context.Background(), post)
 }
 
-func formatSprite(url, pokemonName string) (bluesky.ImageDetails, error) {
-	var image bluesky.ImageDetails
+func formatSprite(url string) (bluesky.RespImageUpload, error) {
 	resp, err := resty.New().R().Get(url)
 	if err != nil {
-		return image, fmt.Errorf("failed to get sprite for pokemon")
+		return bluesky.RespImageUpload{}, fmt.Errorf("failed to get sprite for pokemon")
 	}
 
 	if len(resp.Body()) > 1000000 {
-		return image, fmt.Errorf("image too large")
+		return bluesky.RespImageUpload{}, fmt.Errorf("image too large")
 	}
 
-	image.Alt = fmt.Sprintf("official artwork of the pokemon %s", pokemonName)
-	image.Image.MimeType = resp.Header().Get("Content-Type")
-	image.Image.Size = len(resp.Body())
-	image.Image.Type = "app.bsky.embed.images"
-	image.Image.Ref.Link = string(resp.Body())
+	uploadedImage, uploadedImageErr := bluesky.UploadImage(context.Background(), resp.Body())
+	if uploadedImageErr != nil {
+		return bluesky.RespImageUpload{}, fmt.Errorf("failed to upload sprite: %w", uploadedImageErr)
+	}
 
-	return image, nil
+	return uploadedImage, nil
 }
 
 func formatStat(statName string, statVal int) string {
