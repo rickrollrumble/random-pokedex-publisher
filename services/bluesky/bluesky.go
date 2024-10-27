@@ -107,7 +107,7 @@ func createPostBody(params PostParams) ReqCreatePost {
 	}
 
 	if len(params.Images) > 0 {
-		post.Record.Embed.Type = "$app.bsky.embed.images"
+		post.Record.Embed.Type = "app.bsky.embed.images"
 		post.Record.Embed.Images = params.Images
 	}
 
