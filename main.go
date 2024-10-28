@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/joho/godotenv"
+	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/rand"
@@ -14,7 +17,18 @@ import (
 func main() {
 	logger := zerolog.New(os.Stdout)
 
-	pokeHistory, err := readHistory()
+	env, envLoadErr := godotenv.Read(".env")
+	if envLoadErr != nil {
+		logger.Fatal().Msgf("failed to load environment variables")
+	}
+
+	ctx := context.WithValue(context.Background(), "bucket_name", env["S3_BUCKET"])
+	ctx = context.WithValue(ctx, "object_key", env["S3_OBJECT"])
+	ctx = context.WithValue(ctx, "aws_region", env["AWS_REGION"])
+	ctx = context.WithValue(ctx, "aws_key_id", env["AWS_ACCESS_KEY"])
+	ctx = context.WithValue(ctx, "aws_secret", env["AWS_SECRET"])
+
+	pokeHistory, err := readHistory(ctx)
 	if err != nil {
 		logger.Fatal().Msgf("failed to fetch previously published pokemon: %v", err)
 	}
@@ -55,10 +69,16 @@ func saveToFile(num int) error {
 	return err
 }
 
-func readHistory() (map[int]bool, error) {
+func readHistory(ctx context.Context) (map[int]bool, error) {
 	numbers := make(map[int]bool)
+	fileName := ctx.Value("object_key").(string)
 
-	fileContents, err := os.ReadFile("published_pokemon.txt")
+	getFileErr := aws.GetFile(ctx, fileName)
+	if getFileErr != nil {
+		return nil, fmt.Errorf("failed to read previously published pokemon: %w", getFileErr)
+	}
+
+	fileContents, err := os.ReadFile(fileName)
 
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to read previously published pokemon: %w", err)
