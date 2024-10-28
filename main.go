@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
@@ -23,20 +22,19 @@ func main() {
 	}
 
 	ctx := context.WithValue(context.Background(), "bucket_name", env["S3_BUCKET"])
-	ctx = context.WithValue(ctx, "object_key", env["S3_OBJECT"])
 	ctx = context.WithValue(ctx, "aws_region", env["AWS_REGION"])
 	ctx = context.WithValue(ctx, "aws_key_id", env["AWS_ACCESS_KEY"])
 	ctx = context.WithValue(ctx, "aws_secret", env["AWS_SECRET"])
 
-	pokeHistory, err := readHistory(ctx)
-	if err != nil {
-		logger.Fatal().Msgf("failed to fetch previously published pokemon: %v", err)
-	}
-
 	var pokemonToPublish int
 	for {
+		rand.Seed(uint64(time.Now().Unix()))
 		pokemonToPublish = rand.Intn(1025) + 1
-		if !alreadyPublished(pokemonToPublish, pokeHistory) {
+		alreadyPublished, readErr := readHistory(ctx, pokemonToPublish)
+		if readErr != nil {
+			logger.Err(readErr).Msgf("failed to check if pokemon #%d has been published already; may be double-published", pokemonToPublish)
+		}
+		if !alreadyPublished {
 			postErr := pokemon.CreatePost(pokemonToPublish)
 
 			if postErr != nil {
@@ -45,7 +43,7 @@ func main() {
 
 			logger.Info().Msg("successfully created a post on Bluesky")
 
-			if err := saveToFile(pokemonToPublish); err != nil {
+			if err := updateHistory(ctx, pokemonToPublish); err != nil {
 				logger.Err(err).Msg("failed to save the published pokemon to the history; this pokemon may be published again")
 			}
 
@@ -58,39 +56,10 @@ func alreadyPublished(pokemonNum int, previouslyPublished map[int]bool) bool {
 	return previouslyPublished[pokemonNum]
 }
 
-func saveToFile(num int) error {
-	f, err := os.OpenFile("published_pokemon.txt", os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	if err != nil {
-		return fmt.Errorf("failed to save to file: %w", err)
-	}
-
-	_, err = f.WriteString(fmt.Sprintf("%d\n", num))
-
-	return err
+func updateHistory(ctx context.Context, num int) error {
+	return aws.CreateFile(ctx, fmt.Sprintf("%d", num))
 }
 
-func readHistory(ctx context.Context) (map[int]bool, error) {
-	numbers := make(map[int]bool)
-	fileName := ctx.Value("object_key").(string)
-
-	getFileErr := aws.GetFile(ctx, fileName)
-	if getFileErr != nil {
-		return nil, fmt.Errorf("failed to read previously published pokemon: %w", getFileErr)
-	}
-
-	fileContents, err := os.ReadFile(fileName)
-
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to read previously published pokemon: %w", err)
-	}
-
-	lines := strings.Split(string(fileContents), "\n")
-
-	for _, line := range lines {
-		if num, err := strconv.Atoi(strings.TrimSpace(line)); err == nil {
-			numbers[num] = true
-		}
-	}
-
-	return numbers, nil
+func readHistory(ctx context.Context, pokemonNumber int) (bool, error) {
+	return aws.FileExists(ctx, fmt.Sprintf("%d", pokemonNumber))
 }

@@ -3,9 +3,9 @@ package aws
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -18,44 +18,37 @@ func createSession(ctx context.Context) *session.Session {
 	}))
 }
 
-func SaveFile(ctx context.Context, fileName string) error {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return err
-	}
-
+func FileExists(ctx context.Context, fileName string) (bool, error) {
 	svc := s3.New(createSession(ctx))
 
 	bucketName := ctx.Value("bucket_name").(string)
 
-	_, err = svc.PutObject(&s3.PutObjectInput{
+	_, fileExistsErr := svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(fileName),
-		Body:   file,
 	})
-
-	return err
-}
-
-func GetFile(ctx context.Context, fileName string) error {
-	svc := s3.New(createSession(ctx))
-
-	file, err := os.Create("published_pokemon.txt")
-	if err != nil {
-		return fmt.Errorf("failed to create file to store s3 object: %q: %w", fileName, err)
+	if fileExistsErr != nil {
+		if s3Err, ok := fileExistsErr.(awserr.Error); ok && s3Err.Code() == "NotFound" {
+			return false, nil
+		} else {
+			return false, fmt.Errorf("failed to check if pokemon history exists already: %w", s3Err)
+		}
 	}
 
-	defer file.Close()
+	return true, nil
+}
 
-	objectKey := ctx.Value("object_key").(string)
+func CreateFile(ctx context.Context, fileName string) error {
+	svc := s3.New(createSession(ctx))
+
 	bucketName := ctx.Value("bucket_name").(string)
 
-	_, err = svc.GetObject(&s3.GetObjectInput{
+	_, err := svc.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
+		Key:    aws.String(fileName),
 	})
 	if err != nil {
-		return fmt.Errorf("unable to download item %q from bucket %q: %w", objectKey, bucketName, err)
+		return fmt.Errorf("failed to update published pokemon history: %w", err)
 	}
 
 	return nil
