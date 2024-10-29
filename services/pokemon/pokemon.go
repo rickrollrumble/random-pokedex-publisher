@@ -132,7 +132,7 @@ func CreatePost(id int) error {
 
 	sprite, err := formatSprite(pokemon.Sprites.Other.OfficialArtwork.FrontDefault)
 	if err != nil {
-		return fmt.Errorf("failed to fetch sprite for pokemon")
+		return fmt.Errorf("failed to fetch sprite for pokemon: %w", err)
 	}
 
 	post.Images = []bluesky.ImageDetails{
@@ -148,7 +148,7 @@ func CreatePost(id int) error {
 func formatSprite(url string) (bluesky.RespImageUpload, error) {
 	resp, err := resty.New().R().Get(url)
 	if err != nil {
-		return bluesky.RespImageUpload{}, fmt.Errorf("failed to get sprite for pokemon")
+		return bluesky.RespImageUpload{}, fmt.Errorf("failed to get sprite for pokemon: %w", err)
 	}
 
 	if len(resp.Body()) > 1000000 {

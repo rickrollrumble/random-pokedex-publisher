@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
 	"github.com/rs/zerolog"
@@ -16,15 +15,10 @@ import (
 func main() {
 	logger := zerolog.New(os.Stdout)
 
-	env, envLoadErr := godotenv.Read(".env")
-	if envLoadErr != nil {
-		logger.Fatal().Msgf("failed to load environment variables")
-	}
-
-	ctx := context.WithValue(context.Background(), "bucket_name", env["S3_BUCKET"])
-	ctx = context.WithValue(ctx, "aws_region", env["AWS_REGION"])
-	ctx = context.WithValue(ctx, "aws_key_id", env["AWS_ACCESS_KEY"])
-	ctx = context.WithValue(ctx, "aws_secret", env["AWS_SECRET"])
+	ctx := context.WithValue(context.Background(), "bucket_name", os.Getenv("S3_BUCKET"))
+	ctx = context.WithValue(ctx, "aws_region", os.Getenv("AWS_REGION"))
+	ctx = context.WithValue(ctx, "aws_key_id", os.Getenv("AWS_ACCESS_KEY"))
+	ctx = context.WithValue(ctx, "aws_secret", os.Getenv("AWS_SECRET"))
 
 	var pokemonToPublish int
 	for {

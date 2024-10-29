@@ -5,26 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/joho/godotenv"
 )
 
 // Import resty into your code and refer it as `resty`.
 func CreateNewSession() (NewSession, error) {
-	env, envLoadErr := godotenv.Read(".env")
-	if envLoadErr != nil {
-		return NewSession{}, fmt.Errorf("failed to load environment variables to create session: %w", envLoadErr)
-	}
-
-	bskyPassword := env["BSKY_PASSWORD"]
-	bskyHandle := env["BSKY_HANDLE"]
-
 	client := resty.New().SetBaseURL("https://bsky.social")
-	req := client.R().SetBody(map[string]string{"identifier": bskyHandle, "password": bskyPassword})
-
+	req := client.R().SetBody(map[string]string{"identifier": os.Getenv("BSKY_HANDLE"), "password": os.Getenv("BSKY_PASSWORD")})
+	fmt.Println(os.Getenv("BSKY_HANDLE"), os.Getenv("BSKY_PASSWORD"))
 	var bskyResp NewSession
 
 	resp, respErr := req.Post("xrpc/com.atproto.server.createSession")
