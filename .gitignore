@@ -1,4 +1,6 @@
 .vscode
 random-pokemon-publisher
 .env
+main
 published_pokemon.txt
+*.zip

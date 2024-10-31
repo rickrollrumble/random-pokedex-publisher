@@ -6,15 +6,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/rand"
 )
 
 func main() {
-	lambda.Start(publish)
+	// lambda.Start(publish)
+	res, err := publish()
+	if err != nil {
+		log.Err(err).Msg(err.Error())
+	} else {
+		log.Info().Msg(res)
+	}
 }
 
 func publish() (string, error) {
@@ -33,7 +39,7 @@ func publish() (string, error) {
 			publishErr = pokemon.CreatePost(pokemonToPublish)
 
 			if publishErr != nil {
-				publishErr = fmt.Errorf("failed to publish pokemon #d: %w", pokemonToPublish, publishErr)
+				publishErr = fmt.Errorf("failed to publish pokemon #%d: %w", pokemonToPublish, publishErr)
 				break
 			}
 
