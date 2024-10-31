@@ -15,16 +15,11 @@ import (
 func main() {
 	logger := zerolog.New(os.Stdout)
 
-	ctx := context.WithValue(context.Background(), "bucket_name", os.Getenv("S3_BUCKET"))
-	ctx = context.WithValue(ctx, "aws_region", os.Getenv("AWS_REGION"))
-	ctx = context.WithValue(ctx, "aws_key_id", os.Getenv("AWS_ACCESS_KEY"))
-	ctx = context.WithValue(ctx, "aws_secret", os.Getenv("AWS_SECRET"))
-
 	var pokemonToPublish int
 	for {
 		rand.Seed(uint64(time.Now().Unix()))
 		pokemonToPublish = rand.Intn(1025) + 1
-		alreadyPublished, readErr := readHistory(ctx, pokemonToPublish)
+		alreadyPublished, readErr := readHistory(context.Background(), pokemonToPublish)
 		if readErr != nil {
 			logger.Err(readErr).Msgf("failed to check if pokemon #%d has been published already; may be double-published", pokemonToPublish)
 		}
@@ -37,7 +32,7 @@ func main() {
 
 			logger.Info().Msg("successfully created a post on Bluesky")
 
-			if err := updateHistory(ctx, pokemonToPublish); err != nil {
+			if err := updateHistory(context.Background(), pokemonToPublish); err != nil {
 				logger.Err(err).Msg("failed to save the published pokemon to the history; this pokemon may be published again")
 			}
 

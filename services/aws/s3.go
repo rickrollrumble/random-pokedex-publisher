@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -11,17 +12,22 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func createSession(ctx context.Context) *session.Session {
+var (
+	bucketName         = os.Getenv("BUCKET_NAME")
+	awsRegion          = os.Getenv("AWS_DEFAULT_REGION")
+	awsAccessKey       = os.Getenv("AWS_ACCESS_KEY")
+	awsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+)
+
+func createSession() *session.Session {
 	return session.Must(session.NewSession(&aws.Config{
-		Region:      aws.String(ctx.Value("aws_region").(string)),
-		Credentials: credentials.NewStaticCredentials(ctx.Value("aws_key_id").(string), ctx.Value("aws_secret").(string), ""),
+		Region:      aws.String(awsRegion),
+		Credentials: credentials.NewStaticCredentials(awsAccessKey, awsSecretAccessKey, ""),
 	}))
 }
 
 func FileExists(ctx context.Context, fileName string) (bool, error) {
-	svc := s3.New(createSession(ctx))
-
-	bucketName := ctx.Value("bucket_name").(string)
+	svc := s3.New(createSession())
 
 	_, fileExistsErr := svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucketName),
@@ -39,9 +45,7 @@ func FileExists(ctx context.Context, fileName string) (bool, error) {
 }
 
 func CreateFile(ctx context.Context, fileName string) error {
-	svc := s3.New(createSession(ctx))
-
-	bucketName := ctx.Value("bucket_name").(string)
+	svc := s3.New(createSession())
 
 	_, err := svc.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(bucketName),

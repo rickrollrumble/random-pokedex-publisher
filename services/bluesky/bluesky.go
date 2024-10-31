@@ -14,9 +14,9 @@ import (
 
 // Import resty into your code and refer it as `resty`.
 func CreateNewSession() (NewSession, error) {
-	client := resty.New().SetBaseURL("https://bsky.social")
+	client := resty.New().SetBaseURL("https://bsky.social").SetRetryCount(5)
 	req := client.R().SetBody(map[string]string{"identifier": os.Getenv("BSKY_HANDLE"), "password": os.Getenv("BSKY_PASSWORD")})
-	fmt.Println(os.Getenv("BSKY_HANDLE"), os.Getenv("BSKY_PASSWORD"))
+
 	var bskyResp NewSession
 
 	resp, respErr := req.Post("xrpc/com.atproto.server.createSession")
@@ -103,9 +103,6 @@ func createPostBody(params PostParams) ReqCreatePost {
 		post.Record.Embed.Images = params.Images
 	}
 
-	y, _ := json.Marshal(post)
-	j := string(y)
-	fmt.Println(j)
 	return post
 }
 
@@ -119,7 +116,7 @@ func UploadImage(ctx context.Context, image []byte) (RespImageUpload, error) {
 		}
 	}
 
-	client := resty.New().SetAuthScheme("Bearer").SetBaseURL("https://bsky.social")
+	client := resty.New().SetAuthScheme("Bearer").SetBaseURL("https://bsky.social").SetRetryCount(5)
 	client.SetAuthToken(session.AccessJwt)
 
 	req := client.R().SetBody(image).SetHeader("Content-Type", "image/png")
