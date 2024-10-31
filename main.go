@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
 	"github.com/rs/zerolog"
@@ -13,9 +14,14 @@ import (
 )
 
 func main() {
+	lambda.Start(publish)
+}
+
+func publish() (string, error) {
 	logger := zerolog.New(os.Stdout)
 
 	var pokemonToPublish int
+	var publishErr error
 	for {
 		rand.Seed(uint64(time.Now().Unix()))
 		pokemonToPublish = rand.Intn(1025) + 1
@@ -24,10 +30,11 @@ func main() {
 			logger.Err(readErr).Msgf("failed to check if pokemon #%d has been published already; may be double-published", pokemonToPublish)
 		}
 		if !alreadyPublished {
-			postErr := pokemon.CreatePost(pokemonToPublish)
+			publishErr = pokemon.CreatePost(pokemonToPublish)
 
-			if postErr != nil {
-				logger.Fatal().Msgf("failed to send post to Bluesky: %v", postErr)
+			if publishErr != nil {
+				publishErr = fmt.Errorf("failed to publish pokemon #d: %w", pokemonToPublish, publishErr)
+				break
 			}
 
 			logger.Info().Msg("successfully created a post on Bluesky")
@@ -36,9 +43,10 @@ func main() {
 				logger.Err(err).Msg("failed to save the published pokemon to the history; this pokemon may be published again")
 			}
 
-			break
+			return fmt.Sprintf("successfully published pokemon #%d", pokemonToPublish), nil
 		}
 	}
+	return "", publishErr
 }
 
 func alreadyPublished(pokemonNum int, previouslyPublished map[int]bool) bool {
