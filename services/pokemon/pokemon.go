@@ -4,12 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/bluesky"
+	"github.com/rickrollrumble/random-pokemon-publisher/services/cloud/gcp"
+	"github.com/rs/zerolog"
+	"golang.org/x/exp/rand"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -97,7 +102,7 @@ func getSprite(imageUrl string) ([]byte, error) {
 	return resp.Body(), nil
 }
 
-func CreatePost(id int) error {
+func createPost(id int) error {
 	pokemon, err := getPokemon(id)
 	types := []string{}
 
@@ -179,4 +184,50 @@ func formatStat(statName string, statVal int) string {
 	// Format the string so that the stat name is left-aligned and the stat value is right-aligned
 	// within a total width of 25 characters.
 	return fmt.Sprintf("%-20s%5d", titleCaseStatName, statVal)
+}
+
+var bucket = gcp.Bucket{}
+
+func Publish() (string, error) {
+	logger := zerolog.New(os.Stdout)
+
+	var pokemonToPublish int
+	var publishErr error
+	for {
+		rand.Seed(uint64(time.Now().Unix()))
+		pokemonToPublish = rand.Intn(1025) + 1
+		alreadyPublished, readErr := readHistory(context.Background(), pokemonToPublish)
+		if readErr != nil {
+			logger.Err(readErr).Msgf("failed to check if pokemon #%d has been published already; may be double-published", pokemonToPublish)
+		}
+		if !alreadyPublished {
+			publishErr = createPost(pokemonToPublish)
+
+			if publishErr != nil {
+				publishErr = fmt.Errorf("failed to publish pokemon #%d: %w", pokemonToPublish, publishErr)
+				break
+			}
+
+			logger.Info().Msg("successfully created a post on Bluesky")
+
+			if err := updateHistory(context.Background(), pokemonToPublish); err != nil {
+				logger.Err(err).Msg("failed to save the published pokemon to the history; this pokemon may be published again")
+			}
+
+			return fmt.Sprintf("successfully published pokemon #%d", pokemonToPublish), nil
+		}
+	}
+	return "", publishErr
+}
+
+func alreadyPublished(pokemonNum int, previouslyPublished map[int]bool) bool {
+	return previouslyPublished[pokemonNum]
+}
+
+func updateHistory(ctx context.Context, num int) error {
+	return bucket.CreateFile(ctx, fmt.Sprintf("%d", num))
+}
+
+func readHistory(ctx context.Context, pokemonNumber int) (bool, error) {
+	return bucket.FileExists(ctx, fmt.Sprintf("%d", pokemonNumber))
 }
