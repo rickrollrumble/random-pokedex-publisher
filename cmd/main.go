@@ -1,16 +1,29 @@
 package main
 
 import (
-	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
-	"github.com/rs/zerolog/log"
+	"log"
+	"os"
+
+	_ "github.com/rickrollrumble/random-pokemon-publisher"
+	// Blank-import the function package so the init() runs
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 )
 
 func main() {
-	res, err := pokemon.Publish()
+	// Use PORT environment variable, or default to 8080.
+	port := "8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
+	}
 
-	if err != nil {
-		log.Err(err).Msg(err.Error())
-	} else {
-		log.Info().Msg(res)
+	// By default, listen on all interfaces. If testing locally, run with
+	// LOCAL_ONLY=true to avoid triggering firewall warnings and
+	// exposing the server outside of your own machine.
+	hostname := ""
+	if localOnly := os.Getenv("LOCAL_ONLY"); localOnly == "true" {
+		hostname = "127.0.0.1"
+	}
+	if err := funcframework.StartHostPort(hostname, port); err != nil {
+		log.Fatalf("funcframework.StartHostPort: %v\n", err)
 	}
 }
