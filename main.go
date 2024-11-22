@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/rickrollrumble/random-pokemon-publisher/services/aws"
+	"github.com/rickrollrumble/random-pokemon-publisher/services/cloud/gcp"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -22,6 +22,8 @@ func main() {
 		log.Info().Msg(res)
 	}
 }
+
+var bucket = gcp.Bucket{}
 
 func publish() (string, error) {
 	logger := zerolog.New(os.Stdout)
@@ -60,9 +62,9 @@ func alreadyPublished(pokemonNum int, previouslyPublished map[int]bool) bool {
 }
 
 func updateHistory(ctx context.Context, num int) error {
-	return aws.CreateFile(ctx, fmt.Sprintf("%d", num))
+	return bucket.CreateFile(ctx, fmt.Sprintf("%d", num))
 }
 
 func readHistory(ctx context.Context, pokemonNumber int) (bool, error) {
-	return aws.FileExists(ctx, fmt.Sprintf("%d", pokemonNumber))
+	return bucket.FileExists(ctx, fmt.Sprintf("%d", pokemonNumber))
 }

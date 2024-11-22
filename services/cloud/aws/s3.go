@@ -19,6 +19,8 @@ var (
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 )
 
+type Bucket struct{}
+
 func createSession() *session.Session {
 	return session.Must(session.NewSession(&aws.Config{
 		Region:      aws.String(awsRegion),
@@ -26,7 +28,7 @@ func createSession() *session.Session {
 	}))
 }
 
-func FileExists(ctx context.Context, fileName string) (bool, error) {
+func (b *Bucket) FileExists(ctx context.Context, fileName string) (bool, error) {
 	svc := s3.New(createSession())
 
 	_, fileExistsErr := svc.HeadObject(&s3.HeadObjectInput{
@@ -44,7 +46,7 @@ func FileExists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func CreateFile(ctx context.Context, fileName string) error {
+func (b *Bucket) CreateFile(ctx context.Context, fileName string) error {
 	svc := s3.New(createSession())
 
 	_, err := svc.PutObject(&s3.PutObjectInput{

@@ -12,6 +12,8 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+var repo = os.Getenv("BSKY_HANDLE")
+
 // Import resty into your code and refer it as `resty`.
 func CreateNewSession() (NewSession, error) {
 	client := resty.New().SetBaseURL("https://bsky.social").SetRetryCount(5)
@@ -75,7 +77,7 @@ func SendPost(ctx context.Context, params PostParams) error {
 
 func createPostBody(params PostParams) ReqCreatePost {
 	post := ReqCreatePost{
-		Repo:       "rickrollrumble.bsky.social",
+		Repo:       repo,
 		Collection: "app.bsky.feed.post",
 		Record: Record{
 			Text:      fmt.Sprintf("%s %s", params.Text, params.Link),
