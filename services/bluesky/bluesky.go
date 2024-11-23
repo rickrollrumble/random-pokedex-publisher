@@ -100,6 +100,19 @@ func createPostBody(params PostParams) ReqCreatePost {
 		})
 	}
 
+	post.Record.Facets = append(post.Record.Facets, Facet{
+		Index: Index{
+			ByteStart: 8,
+			ByteEnd:   16,
+		},
+		Features: []Features{
+			{
+				Type: "app.bsky.richtext.facet#tag",
+				Tag:  "Pokemon",
+			},
+		},
+	})
+
 	if len(params.Images) > 0 {
 		post.Record.Embed.Type = "app.bsky.embed.images"
 		post.Record.Embed.Images = params.Images

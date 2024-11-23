@@ -36,6 +36,7 @@ type RespCreatePost struct {
 	Commit           Commit `json:"commit"`
 	ValidationStatus string `json:"validationStatus"`
 }
+
 type Commit struct {
 	Cid string `json:"cid"`
 	Rev string `json:"rev"`
@@ -46,14 +47,18 @@ type ReqCreatePost struct {
 	Collection string `json:"collection"`
 	Record     Record `json:"record"`
 }
+
 type Index struct {
 	ByteStart int `json:"byteStart"`
 	ByteEnd   int `json:"byteEnd"`
 }
+
 type Features struct {
-	Type string `json:"$type"`
-	URI  string `json:"uri"`
+	Type string `json:"$type,omitempty"`
+	URI  string `json:"uri,omitempty"`
+	Tag  string `json:"tag,omitempty"`
 }
+
 type Facet struct {
 	Index    Index      `json:"index"`
 	Features []Features `json:"features"`

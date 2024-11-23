@@ -3,4 +3,5 @@ random-pokemon-publisher
 .env
 main
 published_pokemon.txt
+env.yml
 *.zip

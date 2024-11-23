@@ -117,7 +117,7 @@ func createPost(id int) error {
 		return fmt.Errorf("failed to get flavor text for pokemon %d: %w", id, flavorTextErr)
 	}
 
-	postText := fmt.Sprintf("Today's Pokemon of the day is %s\n\nType: %s\n\n%s\n\n",
+	postText := fmt.Sprintf("Today's #Pokemon of the day is %s\n\nType: %s\n\n%s\n\n",
 		titleCaser.String(strings.ToLower(pokemon.Name)),
 		strings.Join(types[:], "/"),
 		flavorText,
