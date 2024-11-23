@@ -112,15 +112,9 @@ func createPost(id int) error {
 		types = append(types, titleCaser.String(strings.ToLower(pokemonType.Type.Name)))
 	}
 
-	flavorText, flavorTextErr := getFlavorText(id)
-	if flavorTextErr != nil {
-		return fmt.Errorf("failed to get flavor text for pokemon %d: %w", id, flavorTextErr)
-	}
-
-	postText := fmt.Sprintf("Today's #Pokemon of the day is %s\n\nType: %s\n\n%s\n\n",
+	postText := fmt.Sprintf("Today's #Pokemon of the day is %s\n\nType: %s\n\n",
 		titleCaser.String(strings.ToLower(pokemon.Name)),
 		strings.Join(types[:], "/"),
-		flavorText,
 	)
 
 	bst := 0
@@ -130,6 +124,17 @@ func createPost(id int) error {
 	}
 
 	postText += fmt.Sprintf("bst - %d\n", bst)
+
+	flavorText, flavorTextErr := getFlavorText(id)
+	if flavorTextErr != nil {
+		return fmt.Errorf("failed to get flavor text for pokemon %d: %w", id, flavorTextErr)
+	}
+
+	// add flavor text at the end and truncate if neccessary.
+	postText += fmt.Sprintf("\n\n%s", flavorText)
+	if len(postText) > 300 {
+		postText = postText[:297] + "..."
+	}
 
 	post := bluesky.PostParams{
 		Text: postText,

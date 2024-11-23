@@ -1,4 +1,4 @@
-package local
+package main
 
 import (
 	"github.com/rickrollrumble/random-pokemon-publisher/services/pokemon"
