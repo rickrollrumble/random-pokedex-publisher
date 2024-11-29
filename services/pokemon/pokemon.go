@@ -133,8 +133,7 @@ func createPost(id int) error {
 		return fmt.Errorf("failed to get flavor text for pokemon %d: %w", id, flavorTextErr)
 	}
 
-	// add flavor text at the end and truncate if neccessary.
-	postText += fmt.Sprintf("\n\n%s", flavorText)
+	postText += flavorText
 
 	post := bluesky.PostParams{
 		Text: postText,
