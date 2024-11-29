@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/rickrollrumble/random-pokemon-publisher/services/bluesky"
 	"github.com/rickrollrumble/random-pokemon-publisher/services/cloud/gcp"
 	"github.com/rs/zerolog"
+	"github.com/vicanso/go-charts/v2"
 	"golang.org/x/exp/rand"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -117,13 +117,16 @@ func createPost(id int) error {
 		strings.Join(types[:], "/"),
 	)
 
-	bst := 0
+	stats := make(map[string]float64)
+
 	for _, pokemonStat := range pokemon.Stats {
-		bst += pokemonStat.BaseStat
-		postText += fmt.Sprintf("%s\n", fmt.Sprintf("%s - %d", pokemonStat.Stat.Name, pokemonStat.BaseStat))
+		stats[pokemonStat.Stat.Name] = float64(pokemonStat.BaseStat)
 	}
 
-	postText += fmt.Sprintf("bst - %d\n", bst)
+	statsChart, statChartErr := createStatsChart(stats, pokemon.Name)
+	if statChartErr != nil {
+		return fmt.Errorf("failed to upload stats chart: %w", statChartErr)
+	}
 
 	flavorText, flavorTextErr := getFlavorText(id)
 	if flavorTextErr != nil {
@@ -132,9 +135,6 @@ func createPost(id int) error {
 
 	// add flavor text at the end and truncate if neccessary.
 	postText += fmt.Sprintf("\n\n%s", flavorText)
-	if len(postText) > 300 {
-		postText = postText[:297] + "..."
-	}
 
 	post := bluesky.PostParams{
 		Text: postText,
@@ -149,6 +149,10 @@ func createPost(id int) error {
 		{
 			Alt:   fmt.Sprintf("official artwork of the pokemon %s", titleCaser.String(strings.ToLower(pokemon.Name))),
 			Image: sprite,
+		},
+		{
+			Alt:   fmt.Sprintf("radar chart of the stats of the pokemon %s", titleCaser.String(strings.ToLower(pokemon.Name))),
+			Image: statsChart,
 		},
 	}
 
@@ -171,24 +175,6 @@ func formatSprite(url string) (bluesky.RespImageUpload, error) {
 	}
 
 	return uploadedImage, nil
-}
-
-func formatStat(statName string, statVal int) string {
-	// Replace hyphens and underscores with spaces
-	statName = strings.ReplaceAll(statName, "-", " ")
-	statName = strings.ReplaceAll(statName, "_", " ")
-
-	// Remove any other special characters using a regular expression
-	re := regexp.MustCompile(`[^a-zA-Z0-9\s]+`)
-	cleanStatName := re.ReplaceAllString(statName, "")
-
-	// Convert the stat name to title case using golang.org/x/text/cases
-	titleCaser := cases.Title(language.Und) // Using language.Und for language-agnostic title casing
-	titleCaseStatName := titleCaser.String(strings.ToLower(cleanStatName))
-
-	// Format the string so that the stat name is left-aligned and the stat value is right-aligned
-	// within a total width of 25 characters.
-	return fmt.Sprintf("%-20s%5d", titleCaseStatName, statVal)
 }
 
 var bucket = gcp.Bucket{}
@@ -235,4 +221,52 @@ func updateHistory(ctx context.Context, num int) error {
 
 func readHistory(ctx context.Context, pokemonNumber int) (bool, error) {
 	return bucket.FileExists(ctx, fmt.Sprintf("%d", pokemonNumber))
+}
+
+func createStatsChart(stats map[string]float64, name string) (bluesky.RespImageUpload, error) {
+	statNames := make([]string, 0)
+
+	statValues := [][]float64{{}}
+
+	bst := float64(0)
+
+	for sn, v := range stats {
+		statNames = append(statNames, fmt.Sprintf("%s [%.0f]", sn, v))
+		statValues[0] = append(statValues[0], v)
+		bst += v
+	}
+
+	max_stat_val := float64(0xFF)
+	chart, err := charts.RadarRender(
+		statValues,
+		charts.SVGTypeOption(),
+		charts.TitleOptionFunc(charts.TitleOption{
+			Text: fmt.Sprintf("%s base stat total - %.0f", name, bst),
+			Left: charts.PositionCenter,
+		}),
+		charts.RadarIndicatorOptionFunc(
+			statNames,
+			[]float64{
+				max_stat_val,
+				max_stat_val,
+				max_stat_val,
+				max_stat_val,
+				max_stat_val,
+				max_stat_val,
+			}),
+	)
+	if err != nil {
+		return bluesky.RespImageUpload{}, fmt.Errorf("failed to create stats chart: %w", err)
+	}
+	buf, err := chart.Bytes()
+	if len(buf) > 1000000 {
+		return bluesky.RespImageUpload{}, fmt.Errorf("image too large")
+	}
+
+	uploadedImage, uploadedImageErr := bluesky.UploadImage(context.Background(), buf)
+	if uploadedImageErr != nil {
+		return bluesky.RespImageUpload{}, uploadedImageErr
+	}
+
+	return uploadedImage, nil
 }
