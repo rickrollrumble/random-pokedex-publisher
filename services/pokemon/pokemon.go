@@ -237,6 +237,7 @@ func createStatsChart(stats map[string]float64, name string) (bluesky.RespImageU
 	for i, statName := range statNames {
 		statNames[i] = fmt.Sprintf("%s [%.0f]", statName, stats[statName])
 		statValues[0] = append(statValues[0], stats[statName])
+		bst += stats[statName]
 	}
 
 	max_stat_val := float64(0xFF)
