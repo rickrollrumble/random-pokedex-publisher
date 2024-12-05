@@ -223,16 +223,20 @@ func readHistory(ctx context.Context, pokemonNumber int) (bool, error) {
 }
 
 func createStatsChart(stats map[string]float64, name string) (bluesky.RespImageUpload, error) {
-	statNames := make([]string, 0)
+	// a map does not necessarily have the same order of keys every time
+	// this causes the stats to be in a random order during each run and causes the charts to
+	// not be standardized.
+	// by initializing the stat name, the map lookup happens in a fixed order no matter the
+	// order of the keys itself.
+	statNames := []string{"hp", "attack", "defense", "special-attack", "special-defense", "speed"}
 
 	statValues := [][]float64{{}}
 
 	bst := float64(0)
 
-	for sn, v := range stats {
-		statNames = append(statNames, fmt.Sprintf("%s [%.0f]", sn, v))
-		statValues[0] = append(statValues[0], v)
-		bst += v
+	for i, statName := range statNames {
+		statNames[i] = fmt.Sprintf("%s [%.0f]", statName, stats[statName])
+		statValues[0] = append(statValues[0], stats[statName])
 	}
 
 	max_stat_val := float64(0xFF)
